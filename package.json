@@ -1,0 +1,11 @@
+{
+    "name": "kaftain",
+    "version": "1.0.0",
+    "description": "Kubernetes Consumer Lag Scaler",
+    "main": "app.js",
+    "dependencies": {
+      "@kubernetes/client-node": "^0.18.1"
+    }
+  }
+  
+  
