@@ -1,4 +1,4 @@
-const k8s = require('@kubernetes/client-node');
+import k8s from '@kubernetes/client-node';
 
 
 
@@ -86,7 +86,7 @@ class KubernetesDeploymentManager {
         }
     }
 
-    start() {
+    run() {
         console.log(`Starting deployment manager for ${this.deploymentName} in namespace ${this.namespace}`);
         
         // First update the replica count
@@ -105,4 +105,5 @@ const deploymentName = process.env.DEPLOYMENT_NAME || 'kafka-consumer';
 
 // Create and start the deployment manager
 const manager = new KubernetesDeploymentManager(namespace, deploymentName);
-manager.start();
+
+export default manager;
