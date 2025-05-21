@@ -1,5 +1,6 @@
 import express from 'express';
 import userRoutes from './userRoutes.js';
+import scalingRoutes from './scalingRoutes.js';
 
 const router = express.Router();
 
@@ -10,5 +11,6 @@ router.get('/health', (req, res) => {
 
 // Mount routes
 router.use('/users', userRoutes);
+outer.use('/scaling', scalingRoutes);
 
-export default router; 
+export default router;

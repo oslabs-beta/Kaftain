@@ -16,7 +16,7 @@ class KubernetesDeploymentManager {
   }
 
   // (SCALER) a method to programatically change the number of pods/replicas for a specific Kubernetes Deployment
-  async updateReplicaCount() {
+  async updateReplicaCount(replicas) {
     try {
       // create a patch object which tells Kubernetes what you want to change
       const patch = [
@@ -47,6 +47,8 @@ class KubernetesDeploymentManager {
       console.log(`Namespace: ${response.body.metadata.namespace}`);
       console.log(`New Replica Count: ${response.body.spec.replicas}`);
       console.log('----------------------------\n');
+
+      return response.body;
     } catch (error) {
       console.error('Error updating deployment:', error.message);
       if (error.response && error.response.body) {
