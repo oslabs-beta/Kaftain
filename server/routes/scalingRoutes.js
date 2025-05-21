@@ -1,10 +1,11 @@
 import express from 'express';
 import {
-  scaleBasedOnLag,
+  scale,
   calculateOptimalReplicas,
   config,
 } from '../controllers/scalingController.js';
 
 const router = express.Router();
 
+router. 
 export default router;
