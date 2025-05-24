@@ -4,7 +4,8 @@ import dotenv from 'dotenv';
 import routes from './routes/index.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import connectDB from './config/db.js';
-import kubernetesController from './controllers/kubernetesController.js';
+import kubernetesController from './controllers/k8sController.js';
+import lagController from './controllers/lagController.js';
 
 // Load environment variables
 dotenv.config();
@@ -37,4 +38,4 @@ app.listen(PORT, () => {
 });
 
 // Log initial message
-console.log("Hello world"); 
+console.log("Hello world");
