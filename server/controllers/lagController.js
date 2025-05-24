@@ -28,7 +28,7 @@ async function getConsumerLag(req, res){
         topic: labels.topic,
         lag: parseFloat(match[2])
       };
-    }).filter(Boolean);
+    }).filter(Boolean);  //removes any falsy values such as null in an array
 
     console.log('lagData', lagData);
 
