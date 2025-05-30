@@ -1,14 +1,21 @@
 import axios from 'axios';
 
-async function getConsumerLag(req, res){
-    const url = 'http://52.52.97.230:9308/metrics';
+const url = 'http://52.52.97.230:9308/metrics'; //this is hardcoded but needs to updated
+const consumerGroupName = "test-consumer-static-value";
+
+async function fetchLag(url, consumerGroupName){
   try {
     const response = await axios.get(url);
     //console.log('response', response.data);
 
     const metrics = response.data;
     // Scrapes consumer lag lines from exporter
-    const lagLines = metrics.split('\n').filter(line => line.startsWith('kafka_consumergroup_lag_sum'));
+    const lagLines = metrics
+    .split('\n')
+    .filter(line =>
+      line.startsWith('kafka_consumergroup_lag_sum') &&
+      line.includes(`consumergroup="${consumerGroupName}"`)  //filter by consumer group
+    );
     console.log('lagLines', lagLines);
 
     const lagData = lagLines.map(line => {
@@ -31,12 +38,22 @@ async function getConsumerLag(req, res){
     }).filter(Boolean);  //removes any falsy values such as null in an array
 
     console.log('lagData', lagData);
+    return lagData;
 
-    res.status(200).json(lagData); //sends consumer lag per topic per consumer-group
   } catch(error){
     throw new Error (`Error fetching consumer lag, ${error.message}`);
+  }
+}
+
+async function getConsumerLag (req, res) {
+  try {
+    const consumerGroup = "test-consumer-static-value" //this is currently hardcoded but needs to be updated
+    const lagObject = await fetchLag(url, consumerGroup);
+    res.status(200).json(lagObject);
+  } catch (error) {
+    throw new Error (`Error in fetching lag, ${error.message}`);
     res.status(500).send('Error fetching consumer lag');
   }
 }
 
-export default getConsumerLag;
+export default {getConsumerLag, fetchLag};
