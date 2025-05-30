@@ -1,6 +1,7 @@
 // Contains pure functions to fetch and parse Kafka lag metrics.
 import axios from 'axios';
 
+// Fetches and parses lag data from the Kafka exporter
 export async function fetchLagData() {
   const url = 'http://52.52.97.230:9308/metrics';
   const response = await axios.get(url);

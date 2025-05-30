@@ -5,6 +5,6 @@ import { getConsumerLag } from '../controllers/lagController.js';
 const router = express.Router();
 
 // Get consumer lag
-router.get('/', lagController.getConsumerLag);
+router.get('/', getConsumerLag);
 
 export default router;
