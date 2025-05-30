@@ -14,6 +14,6 @@ router.get('/health', (req, res) => {
 // Mount routes
 router.use('/users', userRoutes);
 router.use('/scaling', scalingRoutes);
-router.use('/getlag', lagRoutes);
+router.use('/getConsumerLag', lagRoutes);
 
 export default router;
