@@ -1,7 +1,7 @@
 import express from 'express';
-import userRoutes from './userRoutes.js';
-import scalingRoutes from './scalingRoutes.js';
 import lagRoutes from './lagRoutes.js';
+import scalingRoutes from './scalingRoutes.js';
+import serviceRoutes from './serviceRoutes.js';
 
 const router = express.Router();
 
@@ -11,8 +11,8 @@ router.get('/health', (req, res) => {
 });
 
 // Mount routes
-router.use('/users', userRoutes);
+router.use('/lag', lagRoutes);
 router.use('/scaling', scalingRoutes);
-router.use('/getlag', lagRoutes);
+router.use('/service', serviceRoutes);
 
 export default router;
