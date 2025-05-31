@@ -3,9 +3,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import routes from './routes/index.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
-import connectDB from './config/db.js';
-import kubernetesController from './controllers/k8sController.js';
-import lagController from './controllers/lagController.js';
+import sequelize from './config/db.js';
+import './models/UserConfig.js';
+import './models/LagRecord.js';
+import './models/ScalingRecord.js';
+import './models/MonitorRecord.js';
 
 // Load environment variables
 dotenv.config();
@@ -32,10 +34,17 @@ app.use(errorHandler);
 // Connect to MongoDB - Uncomment when ready to use MongoDB
 // connectDB();
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Sync database models
+sequelize
+  .sync()
+  .then(() => {
+    console.log('Database synced');
+    // Start your server after syncing
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  })
+  .catch((err) => {
+    console.error('Failed to sync database:', err);
+  });
 
 // Log initial message
-console.log("Hello world");
+console.log('Hello world');

@@ -1,17 +1,8 @@
-import mongoose from 'mongoose';
+import { Sequelize } from 'sequelize';
 
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`Error: ${error.message}`);
-    process.exit(1);
-  }
-};
+const sequelize = new Sequelize('kaftain_db', 'kaftain_user', 'kaftain', {
+  host: 'localhost', // or your MySQL host
+  dialect: 'mysql',
+});
 
-export default connectDB; 
+export default sequelize;
