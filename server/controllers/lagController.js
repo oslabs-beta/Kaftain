@@ -51,4 +51,4 @@ export async function getConsumerLag(req, res) {
 //   }
 // }
 
-// export default getConsumerLag;
+export default getConsumerLag;
