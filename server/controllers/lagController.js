@@ -1,11 +1,15 @@
 // Handles HTTP requests for lag metrics by invoking lag service functions.
 import { fetchLagData } from '../services/lagService.js';
 
+const url = 'http://52.52.97.230:9308/metrics'; //this is hardcoded but needs to updated
+const consumerGroupName = "test-consumer-static-value";
+
 export async function getConsumerLag(req, res) {
   try {
-    const lagData = await fetchLagData();
+    const lagData = await fetchLagData(url, consumerGroupName);
     res.status(200).json(lagData);
   } catch (error) {
+    console.error('Error fetching consumer lag:', error);
     res.status(500).send('Error fetching consumer lag');
   }
 }

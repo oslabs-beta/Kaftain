@@ -1,8 +1,7 @@
 // Contains pure functions to fetch and parse Kafka lag metrics.
 import axios from 'axios';
 
-const url = 'http://52.52.97.230:9308/metrics'; //this is hardcoded but needs to updated
-const consumerGroupName = "test-consumer-static-value";
+
 
 // Fetches and parses lag data from the Kafka exporter
 export async function fetchLagData(url, consumerGroupName) {
@@ -21,7 +20,10 @@ export async function fetchLagData(url, consumerGroupName) {
 
     const lagData = lagLines.map(line => {
       const match = line.match(/kafka_consumergroup_lag_sum{([^}]*)} ([0-9.]+)/); //loops over lagLines array for each line that includes kafka_consumergroup_lag
-      if (!match) return null; //return null if no match is found
+      if (!match) {
+        console.log('no match found');
+        return null; //return null if no match is found
+      }
 
       const matchArray = match[1].split(','); //selecting element at index 1 to extract topic data by splitting at ,
 
@@ -37,6 +39,7 @@ export async function fetchLagData(url, consumerGroupName) {
         lag: parseFloat(match[2])
       };
     }).filter(Boolean);
+    return lagData;
   }
 
   

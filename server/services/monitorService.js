@@ -17,8 +17,15 @@ export function startMonitor({
 
   // Define the monitoring function to run on each interval
   const monitor = async () => {
+
+    const url = 'http://52.52.97.230:9308/metrics'; //this is hardcoded but needs to updated
+    const consumerGroupName = "test-consumer-static-value";
+    // const url = sqlquery('SELECT url FROM kafka_exporter WHERE id = 1');
+    // const consumerGroupName = sqlquery('SELECT consumer_group_name FROM kafka_exporter WHERE id = 1');
+
+
     // 1. Fetch current lag data from Kafka exporter
-    const lagData = await fetchLagData();
+    const lagData = await fetchLagData(url, consumerGroupName);
 
     // 2. Filter lag data for the specified consumer group (and topic, if provided)
     const relevantLag = lagData.filter(
