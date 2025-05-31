@@ -6,11 +6,14 @@ import {
   AlertCircle, 
   CheckCircle2,
   Activity,
-  Database,
-  Server,
-  Cloud
+  Database
 } from 'lucide-react';
 import LagTimeline from '../components/LagTimeline';
+import MonitorControl from '../components/MonitorControl';
+import ActiveMonitors, { Monitor } from '../components/ActiveMonitors';
+import ConfirmDialog from '../components/ConfirmDialog';
+import ErrorModal from '../components/ErrorModal';
+import axios from 'axios';
 
 // Mock data for demonstration
 const consumerGroups = [
@@ -47,13 +50,33 @@ const consumerGroups = [
 ];
 
 // Mock lag timeline data
-const generateMockTimelineData = (hours: number) => {
+const generateMockTimelineData = (hours: number, peakPercentage: number = 0.7) => {
   const now = Date.now();
   const points = [];
-  for (let i = 0; i < hours * 12; i++) {
+  const totalPoints = hours * 12; // 12 points per hour (5-minute intervals)
+  const peakPoint = Math.floor(totalPoints * peakPercentage); // Peak at specified percentage
+  const maxLag = 1000 + Math.random() * 500; // Random max between 1000-1500
+  
+  for (let i = 0; i < totalPoints; i++) {
+    let lag: number;
+    
+    if (i <= peakPoint) {
+      // Continuous upward trend with slight variations
+      const progress = i / peakPoint;
+      lag = Math.floor(maxLag * progress + (Math.random() - 0.5) * 50);
+    } else {
+      // Faster drop-off after peak
+      const dropProgress = (i - peakPoint) / (totalPoints - peakPoint);
+      const dropFactor = Math.pow(1 - dropProgress, 0.5); // Faster drop using square root
+      lag = Math.floor(maxLag * dropFactor + (Math.random() - 0.5) * 30);
+    }
+    
+    // Ensure lag is never negative
+    lag = Math.max(0, lag);
+    
     points.push({
       timestamp: now - (hours * 3600000) + (i * 300000),
-      lag: Math.floor(Math.random() * 1000)
+      lag
     });
   }
   return points;
@@ -63,45 +86,93 @@ const mockTimelineSeries = [
   {
     groupName: 'payment-processor',
     topic: 'transactions',
-    data: generateMockTimelineData(24)
+    data: generateMockTimelineData(24, 0.5), // Peaks at 50% (12 hours)
+    peakPercentage: 0.5
   },
   {
     groupName: 'notification-service',
     topic: 'user-events',
-    data: generateMockTimelineData(24)
+    data: generateMockTimelineData(24, 0.7), // Peaks at 70% (16.8 hours)
+    peakPercentage: 0.7
   },
   {
     groupName: 'analytics-pipeline',
     topic: 'user-activity',
-    data: generateMockTimelineData(24)
+    data: generateMockTimelineData(24, 0.85), // Peaks at 85% (20.4 hours)
+    peakPercentage: 0.85
   }
 ];
-
-// Mock cluster information
-const kafkaClusterInfo = {
-  clusterName: 'prod-kafka-cluster',
-  brokerAddresses: ['10.0.1.100:9092', '10.0.1.101:9092', '10.0.1.102:9092'],
-  zookeeperAddress: '10.0.1.50:2181',
-  version: '3.5.1',
-  totalTopics: 24,
-  totalPartitions: 96,
-  replicationFactor: 3
-};
-
-const kubernetesClusterInfo = {
-  clusterName: 'prod-k8s-east',
-  masterNode: '10.0.2.10',
-  workerNodes: ['10.0.2.11', '10.0.2.12', '10.0.2.13'],
-  version: '1.28.3',
-  namespace: 'kafka-consumers',
-  totalPods: 12,
-  totalNodes: 4,
-  region: 'us-east-1'
-};
 
 export default function Dashboard() {
   const { selectedGroup, setSelectedGroup } = useApp();
   const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h'>('6h');
+  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; groupName: string }>({ isOpen: false, groupName: '' });
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; message: string }>({ isOpen: false, title: '', message: '' });
+
+  const handleStartMonitor = async (groupName: string, lagThreshold: number) => {
+    try {
+      const response = await axios.post('http://localhost:3001/api/service/start', {
+        groupName,
+        lagThreshold,
+        topicName: 'fake-topic-placeholder' // Static fake value as requested
+      });
+
+      if (response.status === 200) {
+        // Add new monitor to the list
+        const newMonitor: Monitor = {
+          id: Date.now().toString(),
+          groupName,
+          lagThreshold,
+          startTime: new Date(),
+          status: 'running',
+          currentReplicaCount: 1 // Default starting replica count
+        };
+        setMonitors([...monitors, newMonitor]);
+      }
+    } catch (error) {
+      const errorMessage = axios.isAxiosError(error) 
+        ? error.response?.data?.message || 'An error occurred while starting the monitor. Please try again.'
+        : 'An unexpected error occurred. Please try again.';
+      
+      setErrorModal({
+        isOpen: true,
+        title: 'Failed to Start Monitor',
+        message: errorMessage
+      });
+    }
+  };
+
+  const handleStopMonitor = (groupName: string) => {
+    setConfirmDialog({ isOpen: true, groupName });
+  };
+
+  const confirmStopMonitor = async () => {
+    const groupName = confirmDialog.groupName;
+    setConfirmDialog({ isOpen: false, groupName: '' });
+
+    try {
+      const response = await axios.post('http://localhost:3001/api/service/stop', {
+        groupName,
+        topicName: 'fake-topic-placeholder' // Static fake value as requested
+      });
+
+      if (response.status === 200) {
+        // Remove monitor from the list
+        setMonitors(monitors.filter(m => m.groupName !== groupName));
+      }
+    } catch (error) {
+      const errorMessage = axios.isAxiosError(error)
+        ? error.response?.data?.message || 'An error occurred while stopping the monitor. Please try again.'
+        : 'An unexpected error occurred. Please try again.';
+
+      setErrorModal({
+        isOpen: true,
+        title: 'Failed to Stop Monitor',
+        message: errorMessage
+      });
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -135,6 +206,22 @@ export default function Dashboard() {
           </div>
           <p className="text-3xl font-bold">2</p>
         </div>
+      </div>
+
+      {/* Monitor Control */}
+      <div className="col-span-1 lg:col-span-4">
+        <MonitorControl
+          consumerGroups={consumerGroups}
+          onStartMonitor={handleStartMonitor}
+        />
+      </div>
+
+      {/* Active Monitors */}
+      <div className="col-span-1 lg:col-span-4">
+        <ActiveMonitors
+          monitors={monitors}
+          onStopMonitor={handleStopMonitor}
+        />
       </div>
 
       {/* Lag Timeline */}
@@ -207,97 +294,23 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Kafka Cluster Information */}
-      <div className="col-span-1 lg:col-span-2">
-        <div className="backdrop-blur-xl bg-white/10 rounded-xl p-6 border border-white/20 shadow-lg h-full">
-          <div className="flex items-center gap-3 mb-6">
-            <Server className="h-5 w-5 text-white" />
-            <h2 className="text-xl font-semibold text-white">Kafka Cluster Info</h2>
-          </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-                <h3 className="text-white/70 mb-2">Cluster Name</h3>
-                <p className="text-white font-semibold">{kafkaClusterInfo.clusterName}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-                <h3 className="text-white/70 mb-2">Version</h3>
-                <p className="text-white font-semibold">{kafkaClusterInfo.version}</p>
-              </div>
-            </div>
-            <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-              <h3 className="text-white/70 mb-2">Broker Addresses</h3>
-              <div className="space-y-1">
-                {kafkaClusterInfo.brokerAddresses.map((address, index) => (
-                  <p key={index} className="text-white font-mono text-sm">{address}</p>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-                <h3 className="text-white/70 mb-2">Topics</h3>
-                <p className="text-white font-semibold">{kafkaClusterInfo.totalTopics}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-                <h3 className="text-white/70 mb-2">Partitions</h3>
-                <p className="text-white font-semibold">{kafkaClusterInfo.totalPartitions}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-                <h3 className="text-white/70 mb-2">Replication</h3>
-                <p className="text-white font-semibold">{kafkaClusterInfo.replicationFactor}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="Stop Monitor"
+        message={`Are you sure you want to stop monitoring ${confirmDialog.groupName}?`}
+        confirmText="Stop Monitor"
+        onConfirm={confirmStopMonitor}
+        onCancel={() => setConfirmDialog({ isOpen: false, groupName: '' })}
+      />
 
-      {/* Kubernetes Cluster Information */}
-      <div className="col-span-1 lg:col-span-2">
-        <div className="backdrop-blur-xl bg-white/10 rounded-xl p-6 border border-white/20 shadow-lg h-full">
-          <div className="flex items-center gap-3 mb-6">
-            <Cloud className="h-5 w-5 text-white" />
-            <h2 className="text-xl font-semibold text-white">Kubernetes Cluster Info</h2>
-          </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-                <h3 className="text-white/70 mb-2">Cluster Name</h3>
-                <p className="text-white font-semibold">{kubernetesClusterInfo.clusterName}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-                <h3 className="text-white/70 mb-2">Version</h3>
-                <p className="text-white font-semibold">{kubernetesClusterInfo.version}</p>
-              </div>
-            </div>
-            <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-              <h3 className="text-white/70 mb-2">Master Node</h3>
-              <p className="text-white font-mono text-sm">{kubernetesClusterInfo.masterNode}</p>
-            </div>
-            <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-              <h3 className="text-white/70 mb-2">Worker Nodes</h3>
-              <div className="space-y-1">
-                {kubernetesClusterInfo.workerNodes.map((node, index) => (
-                  <p key={index} className="text-white font-mono text-sm">{node}</p>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-                <h3 className="text-white/70 mb-2">Total Pods</h3>
-                <p className="text-white font-semibold">{kubernetesClusterInfo.totalPods}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-                <h3 className="text-white/70 mb-2">Total Nodes</h3>
-                <p className="text-white font-semibold">{kubernetesClusterInfo.totalNodes}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-white/5 backdrop-blur-md border border-white/10">
-                <h3 className="text-white/70 mb-2">Region</h3>
-                <p className="text-white font-semibold">{kubernetesClusterInfo.region}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={errorModal.isOpen}
+        title={errorModal.title}
+        message={errorModal.message}
+        onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+      />
     </div>
   );
 }
