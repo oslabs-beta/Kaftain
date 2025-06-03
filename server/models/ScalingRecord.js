@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/db.js';
+import MonitorRecord from './monitorRecord.js';
 
 const ScalingEvent = sequelize.define('ScalingEvent', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
@@ -13,6 +14,20 @@ const ScalingEvent = sequelize.define('ScalingEvent', {
     allowNull: false,
     defaultValue: DataTypes.NOW,
   },
+  monitorRecordId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: MonitorRecord,
+      key: 'id',
+    },
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  },
 });
+
+// Set up the association
+MonitorRecord.hasMany(ScalingEvent, { foreignKey: 'monitorRecordId' });
+ScalingEvent.belongsTo(MonitorRecord, { foreignKey: 'monitorRecordId' });
 
 export default ScalingEvent;

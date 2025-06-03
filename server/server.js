@@ -36,7 +36,7 @@ app.use(errorHandler);
 
 // Sync database models
 sequelize
-  .sync()
+  .sync({ alter: true })
   .then(() => {
     console.log('Database synced');
     // Start your server after syncing
