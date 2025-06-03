@@ -9,7 +9,7 @@ export function calculateOptimalReplicas(lag, config) {
   return replicas;
 }
 
-export async function scaleDeployment(lag, config) {
+export async function scaleDeployment(lag, config, monitorRecordId) {
   const replicas = calculateOptimalReplicas(lag, config);
 
   // Get current deployment status to compare replicas
@@ -29,6 +29,7 @@ export async function scaleDeployment(lag, config) {
       newReplicas: replicas,
       lag,
       timestamp: new Date(),
+      monitorRecordId,
     });
   }
 

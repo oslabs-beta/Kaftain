@@ -66,7 +66,8 @@ export async function startMonitor({
 
       // If there is lag for this group/topic, determine the max lag and trigger scaling
       const maxLag = Math.max(...relevantLag.map((lag) => lag.lag));
-      await scaleDeployment(maxLag, config);
+      // invoke scaleDeployment, passing in maxLag, config, and monitorId as foreign key
+      await scaleDeployment(maxLag, config, monitorRecord.id);
     }
   };
 
