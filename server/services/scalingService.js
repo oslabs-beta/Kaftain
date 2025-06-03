@@ -10,6 +10,8 @@ export function calculateOptimalReplicas(lag, config) {
   return replicas;
 }
 
+// ; record when scaling with the topic name to db
+
 export async function scaleDeployment(lag, config) {
   const replicas = calculateOptimalReplicas(lag, config);
   return await k8sManager.updateReplicaCount(replicas);
