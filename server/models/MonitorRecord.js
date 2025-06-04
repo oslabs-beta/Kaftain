@@ -6,7 +6,7 @@ const MonitorRecord = sequelize.define('MonitorRecord', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
   clusterId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: ClusterConfig,
       key: 'id',

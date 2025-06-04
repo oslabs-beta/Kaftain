@@ -50,7 +50,7 @@ export async function startMonitor({
       console.error(`Cluster config not found for clusterId: ${clusterId}`);
       return;
     }
-    const url = clusterConfig.url; // Get URL from cluster configuration
+    const url = clusterConfig.url || 'http://52.52.97.230:9308/metrics'; // Get URL from cluster configuration
 
     // Fetch lag data from Kafka exporter using the URL from ClusterConfig
     const consumerGroupName = 'test-consumer-static-value'; // TODO: Replace with dynamic value if needed
