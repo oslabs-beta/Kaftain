@@ -1,6 +1,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/db.js';
-import MonitorRecord from './monitorRecord.js';
+import MonitorRecord from './MonitorRecord.js';
 
 const ScalingEvent = sequelize.define('ScalingEvent', {
   id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },

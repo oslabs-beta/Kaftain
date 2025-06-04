@@ -1,5 +1,5 @@
 import k8sManager from '../controllers/k8sController.js';
-import ScalingEvent from '../models/scalingRecord.js';
+import ScalingEvent from '../models/ScalingRecord.js';
 
 export function calculateOptimalReplicas(lag, config) {
   const min = config?.minReplicas || 1;
@@ -9,7 +9,13 @@ export function calculateOptimalReplicas(lag, config) {
   return replicas;
 }
 
+// Helper to log high-level scaling SQL events
+function logScaling(msg, obj = {}) {
+  console.info(`[ScalingService] ${msg}`, obj);
+}
+
 export async function scaleDeployment(lag, config, monitorRecordId) {
+  logScaling('Scale deployment requested', { lag, monitorRecordId });
   const replicas = calculateOptimalReplicas(lag, config);
 
   // Get current deployment status to compare replicas
@@ -18,10 +24,13 @@ export async function scaleDeployment(lag, config, monitorRecordId) {
 
   // Only scale if needed
   if (replicas !== currentReplicas) {
+    logScaling('Replica count change detected', { currentReplicas, replicas });
     // Actually scale
     await k8sManager.updateReplicaCount(replicas);
+    logScaling('Replica count updated in Kubernetes');
 
     // Store scaling event in DB
+    logScaling('Persisting ScalingEvent to DB');
     await ScalingEvent.create({
       group: config.groupName,
       topic: config.topicName || '',
@@ -31,6 +40,7 @@ export async function scaleDeployment(lag, config, monitorRecordId) {
       timestamp: new Date(),
       monitorRecordId,
     });
+    logScaling('ScalingEvent persisted');
   }
 
   return {

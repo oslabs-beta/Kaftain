@@ -2,9 +2,9 @@
 
 import { fetchLagData } from './lagService.js';
 import { scaleDeployment } from './scalingService.js';
-import MonitorRecord from '../models/monitorRecord.js';
+import MonitorRecord from '../models/MonitorRecord.js';
 import sequelize from '../config/db.js';
-import LagRecord from '../models/lagRecord.js';
+import LagRecord from '../models/LagRecord.js';
 
 let monitorInterval = null; // Holds the current interval ID for the monitoring loop
 const monitorMap = {}; // Maps intervalId to monitorRecordId for tracking
@@ -62,12 +62,17 @@ export async function startMonitor({
         lag: lag.lag,
         timestamp: new Date(),
       }));
+      console.debug('[MonitorService] Persisting lag records', { count: lagRecords.length });
       await LagRecord.bulkCreate(lagRecords);
+      console.debug('[MonitorService] Lag records saved');
 
       // If there is lag for this group/topic, determine the max lag and trigger scaling
       const maxLag = Math.max(...relevantLag.map((lag) => lag.lag));
+      console.debug('[MonitorService] Max lag for scaling evaluation', { maxLag });
       // invoke scaleDeployment, passing in maxLag, config, and monitorId as foreign key
+      console.debug('[MonitorService] Invoking scaleDeployment');
       await scaleDeployment(maxLag, config, monitorRecord.id);
+      console.debug('[MonitorService] scaleDeployment complete');
     }
   };
 
