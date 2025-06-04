@@ -5,6 +5,7 @@ import { scaleDeployment } from './scalingService.js';
 import MonitorRecord from '../models/MonitorRecord.js';
 import sequelize from '../config/db.js';
 import LagRecord from '../models/LagRecord.js';
+import ClusterConfig from '../models/ClusterConfig.js';
 
 let monitorInterval = null; // Holds the current interval ID for the monitoring loop
 const monitorMap = {}; // Maps intervalId to monitorRecordId for tracking
@@ -15,6 +16,7 @@ export async function startMonitor({
   topicName,
   interval = 20000,
   config,
+  clusterId,
 }) {
   // Clear any existing monitor interval before starting a new one
   if (monitorInterval) clearInterval(monitorInterval);
@@ -25,6 +27,7 @@ export async function startMonitor({
   try {
     monitorRecord = await MonitorRecord.create(
       {
+        clusterId: clusterId,
         group: groupName,
         topic: topicName,
         status: 'active',
@@ -41,11 +44,16 @@ export async function startMonitor({
 
   // 2. Define the monitoring function to run on each interval
   const monitor = async () => {
-    // Fetch lag data from Kafka exporter (TODO: make URL and group dynamic)
-    const url = 'http://52.52.97.230:9308/metrics'; // TODO: Replace with dynamic value
-    const consumerGroupName = 'test-consumer-static-value'; // TODO: Replace with dynamic value
+    // Query the ClusterConfig to get the URL using clusterId
+    const clusterConfig = await ClusterConfig.findByPk(clusterId);
+    if (!clusterConfig) {
+      console.error(`Cluster config not found for clusterId: ${clusterId}`);
+      return;
+    }
+    const url = clusterConfig.url; // Get URL from cluster configuration
 
-    // Fetch current lag data
+    // Fetch lag data from Kafka exporter using the URL from ClusterConfig
+    const consumerGroupName = 'test-consumer-static-value'; // TODO: Replace with dynamic value if needed
     const lagData = await fetchLagData(url, consumerGroupName);
 
     // Filter lag data for the specified consumer group (and topic, if provided)
@@ -54,22 +62,21 @@ export async function startMonitor({
         lag.group === groupName && (!topicName || lag.topic === topicName)
     );
 
-    // Store only relevant lag data in DB
     if (relevantLag.length) {
-      const lagRecords = relevantLag.map((lag) => ({
-        group: lag.group,
-        topic: lag.topic,
-        lag: lag.lag,
-        timestamp: new Date(),
-      }));
-      console.debug('[MonitorService] Persisting lag records', { count: lagRecords.length });
-      await LagRecord.bulkCreate(lagRecords);
-      console.debug('[MonitorService] Lag records saved');
-
-      // If there is lag for this group/topic, determine the max lag and trigger scaling
+      // Compute maximum lag from the relevantLag array
       const maxLag = Math.max(...relevantLag.map((lag) => lag.lag));
-      console.debug('[MonitorService] Max lag for scaling evaluation', { maxLag });
-      // invoke scaleDeployment, passing in maxLag, config, and monitorId as foreign key
+      console.debug('[MonitorService] Max lag computed', { maxLag });
+
+      // Store a single LagRecord containing the maximum lag value
+      await LagRecord.create({
+        group: groupName,
+        topic: topicName,
+        lag: maxLag,
+        timestamp: new Date(),
+      });
+      console.debug('[MonitorService] Max lag record saved');
+
+      // Invoke scaleDeployment, passing in maxLag, config, and the MonitorRecord id
       console.debug('[MonitorService] Invoking scaleDeployment');
       await scaleDeployment(maxLag, config, monitorRecord.id);
       console.debug('[MonitorService] scaleDeployment complete');

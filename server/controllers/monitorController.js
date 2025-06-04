@@ -2,8 +2,8 @@
 import { startMonitor, stopMonitor } from '../services/monitorService.js';
 
 export function startMonitorHttp(req, res) {
-  const { groupName, topicName } = req.body;
-  startMonitor({ groupName, topicName }); // maybe we can also add interval/config from req/body
+  const { groupName, topicName, interval, config } = req.body;
+  startMonitor({ groupName, topicName, interval, config, clusterId });
   res.status(200).json({ message: 'Monitor started' });
 }
 
