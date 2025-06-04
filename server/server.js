@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import routes from './routes/index.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import sequelize from './config/db.js';
-import './models/UserConfig.js';
+import './models/ClusterConfig.js';
 import './models/LagRecord.js';
 import './models/ScalingRecord.js';
 import './models/MonitorRecord.js';
@@ -49,7 +49,9 @@ app.use(errorHandler);
     await sequelize.sync({ alter: true });
     console.info('[Boot] Database synced');
 
-    app.listen(PORT, () => console.info(`[Boot] Server running on port ${PORT}`));
+    app.listen(PORT, () =>
+      console.info(`[Boot] Server running on port ${PORT}`)
+    );
   } catch (err) {
     console.error('[Boot] Startup failed:', err);
     process.exit(1);
