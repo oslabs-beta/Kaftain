@@ -7,12 +7,13 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  ReferenceLine
 } from 'recharts';
 import { format } from 'date-fns';
 
 type LagPoint = { timestamp: number; lag: number };
-type Series = { groupName: string; topic: string; data: LagPoint[] };
+type Series = { groupName: string; topic: string; data: LagPoint[]; peakPercentage?: number };
 
 interface Props {
   series: Series[];
@@ -69,6 +70,19 @@ export default function LagTimeline({ series, timeRange, onTimeRangeChange }: Pr
     return dataPoint;
   });
 
+  // Calculate vertical line positions for each series' peak
+  const verticalLines = series
+    .filter(s => s.peakPercentage !== undefined)
+    .map(s => {
+      const peakIndex = Math.floor(s.data.length * s.peakPercentage!);
+      return {
+        groupName: s.groupName,
+        timestamp: s.data[peakIndex]?.timestamp,
+        color: COLORS[series.indexOf(s) % COLORS.length]
+      };
+    })
+    .filter(line => line.timestamp !== undefined);
+
   return (
     <div className="backdrop-blur-xl bg-white/10 rounded-xl p-6 border border-white/20 shadow-lg">
       <div className="flex justify-between items-center mb-6">
@@ -92,7 +106,7 @@ export default function LagTimeline({ series, timeRange, onTimeRangeChange }: Pr
 
       <div className="h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
+          <LineChart data={chartData} margin={{ top: 40, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
             <XAxis
               dataKey="timestamp"
@@ -130,6 +144,21 @@ export default function LagTimeline({ series, timeRange, onTimeRangeChange }: Pr
                 stroke={COLORS[index % COLORS.length]}
                 strokeWidth={2}
                 dot={false}
+              />
+            ))}
+            {verticalLines.map((line) => (
+              <ReferenceLine
+                key={`ref-${line.groupName}`}
+                x={line.timestamp}
+                stroke={line.color}
+                strokeDasharray="5 5"
+                strokeOpacity={0.7}
+                label={{
+                  value: 'Scaling',
+                  position: 'insideTopRight',
+                  offset: 10,
+                  style: { fill: line.color, fontSize: 11, fontWeight: 'bold' }
+                }}
               />
             ))}
           </LineChart>
