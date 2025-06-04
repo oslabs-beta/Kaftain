@@ -1,5 +1,5 @@
 import React from 'react';
-import { Square, Activity, Users, Clock, AlertTriangle } from 'lucide-react';
+import { Square, Activity, Users, Clock, AlertTriangle, Plus } from 'lucide-react';
 
 export interface Monitor {
   id: string;
@@ -13,9 +13,10 @@ export interface Monitor {
 interface ActiveMonitorsProps {
   monitors: Monitor[];
   onStopMonitor: (groupName: string) => void;
+  onAddMonitor: () => void;
 }
 
-export default function ActiveMonitors({ monitors, onStopMonitor }: ActiveMonitorsProps) {
+export default function ActiveMonitors({ monitors, onStopMonitor, onAddMonitor }: ActiveMonitorsProps) {
   const formatStartTime = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       hour: '2-digit',
@@ -53,7 +54,15 @@ export default function ActiveMonitors({ monitors, onStopMonitor }: ActiveMonito
 
   return (
     <div className="backdrop-blur-xl bg-white/10 rounded-xl p-6 border border-white/20 shadow-lg">
-      <h2 className="text-xl font-semibold text-white mb-6">Active Monitors</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-white">Monitors</h2>
+        <button
+          onClick={onAddMonitor}
+          className="p-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 hover:bg-emerald-500/30 hover:border-emerald-400/60 transition-all"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
       
       {monitors.length === 0 ? (
         <p className="text-white/50 text-center py-8">No active monitors</p>
