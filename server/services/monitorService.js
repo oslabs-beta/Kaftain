@@ -8,7 +8,14 @@ import LagRecord from '../models/LagRecord.js';
 import ClusterConfig from '../models/ClusterConfig.js';
 
 let monitorInterval = null; // Holds the current interval ID for the monitoring loop
-const monitorMap = {}; // Maps intervalId to monitorRecordId for tracking
+// Maps intervalId -> monitorRecordId, and groupClusterKey -> intervalId
+const monitorMap = {};
+const groupToInterval = {};
+
+// Helper to build a unique key for a consumer group in a cluster
+function buildKey(groupName, clusterId) {
+  return `${clusterId}:${groupName}`;
+}
 
 // Starts the background monitor for a specific consumer group
 export async function startMonitor({
@@ -63,22 +70,28 @@ export async function startMonitor({
     );
 
     if (relevantLag.length) {
-      // Compute maximum lag from the relevantLag array
-      const maxLag = Math.max(...relevantLag.map((lag) => lag.lag));
-      console.debug('[MonitorService] Max lag computed', { maxLag });
+      // Compute the lag object with the maximum lag value
+      const maxLagObj = relevantLag.reduce((maxObj, curr) => {
+        return (!maxObj || curr.lag > maxObj.lag) ? curr : maxObj;
+      }, null);
+      
+      console.debug('[MonitorService] Max lag object computed', { maxLagObj });
+    
+      // Store a LagRecord using the entire maxLagObj details
 
-      // Store a single LagRecord containing the maximum lag value
+      console.log('maxLagObj', maxLagObj);
       await LagRecord.create({
         group: groupName,
-        topic: topicName,
-        lag: maxLag,
+        topic: maxLagObj.topic, // now using topic from maxLagObj directly
+        lag: maxLagObj.lag,
         timestamp: new Date(),
+        clusterId: clusterId,
       });
       console.debug('[MonitorService] Max lag record saved');
 
       // Invoke scaleDeployment, passing in maxLag, config, and the MonitorRecord id
       console.debug('[MonitorService] Invoking scaleDeployment');
-      await scaleDeployment(maxLag, config, monitorRecord.id);
+      await scaleDeployment(maxLagObj.lag, config, monitorRecord.id, groupName, maxLagObj.topic);
       console.debug('[MonitorService] scaleDeployment complete');
     }
   };
@@ -89,8 +102,9 @@ export async function startMonitor({
   // 4. Set up the interval to run the monitor function repeatedly
   const intervalId = setInterval(monitor, interval);
 
-  // 5. Track the mapping from intervalId to monitorRecordId for later reference
+  // 5. Track the mappings for later reference
   monitorMap[intervalId] = monitorRecord.id;
+  groupToInterval[buildKey(groupName, clusterId)] = intervalId;
   monitorInterval = intervalId;
 }
 
@@ -119,4 +133,32 @@ export async function stopMonitor(intervalId) {
   }
   // 5. Reset the monitorInterval variable
   monitorInterval = null;
+}
+
+// Stop monitor by group & cluster
+export function stopMonitorByGroup(groupName, clusterId) {
+  const key = buildKey(groupName, clusterId);
+  const intervalId = groupToInterval[key];
+  if (intervalId) {
+    stopMonitor(intervalId);
+    delete groupToInterval[key];
+  }
+}
+
+// List active monitor records helper (may be used by controller)
+export async function listActiveMonitors(clusterId) {
+  const where = { status: 'active' };
+  if (clusterId) where.clusterId = clusterId;
+  return MonitorRecord.findAll({ where });
+}
+
+// Helper to stop all monitors for a given clusterId (used when deleting a cluster)
+export function stopMonitorsByCluster(clusterId) {
+  // Iterate over all keys in groupToInterval and stop those that match the clusterId
+  Object.entries(groupToInterval).forEach(([key, intervalId]) => {
+    if (key.startsWith(`${clusterId}:`)) {
+      stopMonitor(intervalId);
+      delete groupToInterval[key];
+    }
+  });
 }

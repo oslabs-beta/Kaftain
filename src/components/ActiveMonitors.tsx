@@ -1,22 +1,23 @@
 import React from 'react';
-import { Square, Activity, Users, Clock, AlertTriangle, Plus } from 'lucide-react';
+import { Pause, Play as PlayIcon, Trash, Activity, Users, Clock, Plus } from 'lucide-react';
 
 export interface Monitor {
   id: string;
   groupName: string;
-  lagThreshold: number;
   startTime: Date;
-  status: 'running' | 'scaling' | 'error';
+  status: 'running' | 'inactive';
   currentReplicaCount: number;
 }
 
 interface ActiveMonitorsProps {
   monitors: Monitor[];
-  onStopMonitor: (groupName: string) => void;
+  onPauseMonitor: (monitor: Monitor) => void;
+  onResumeMonitor: (monitor: Monitor) => void;
+  onDeleteMonitor: (monitor: Monitor) => void;
   onAddMonitor: () => void;
 }
 
-export default function ActiveMonitors({ monitors, onStopMonitor, onAddMonitor }: ActiveMonitorsProps) {
+export default function ActiveMonitors({ monitors, onPauseMonitor, onResumeMonitor, onDeleteMonitor, onAddMonitor }: ActiveMonitorsProps) {
   const formatStartTime = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       hour: '2-digit',
@@ -30,10 +31,8 @@ export default function ActiveMonitors({ monitors, onStopMonitor, onAddMonitor }
     switch (status) {
       case 'running':
         return 'text-emerald-400';
-      case 'scaling':
-        return 'text-amber-400';
-      case 'error':
-        return 'text-rose-400';
+      case 'inactive':
+        return 'text-white/70';
       default:
         return 'text-white/70';
     }
@@ -43,10 +42,6 @@ export default function ActiveMonitors({ monitors, onStopMonitor, onAddMonitor }
     switch (status) {
       case 'running':
         return <Activity className="h-4 w-4" />;
-      case 'scaling':
-        return <Users className="h-4 w-4" />;
-      case 'error':
-        return <AlertTriangle className="h-4 w-4" />;
       default:
         return null;
     }
@@ -78,10 +73,6 @@ export default function ActiveMonitors({ monitors, onStopMonitor, onAddMonitor }
                   <h3 className="font-medium text-white">{monitor.groupName}</h3>
                   <div className="flex items-center gap-4 mt-1 text-sm text-white/70">
                     <span className="flex items-center gap-1">
-                      <AlertTriangle className="h-3 w-3" />
-                      Threshold: {monitor.lagThreshold} msgs
-                    </span>
-                    <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       Started: {formatStartTime(monitor.startTime)}
                     </span>
@@ -101,12 +92,31 @@ export default function ActiveMonitors({ monitors, onStopMonitor, onAddMonitor }
                 </div>
               </div>
 
-              <button
-                onClick={() => onStopMonitor(monitor.groupName)}
-                className="ml-4 p-2 rounded-lg bg-rose-500/20 border border-rose-400/40 text-rose-400 hover:bg-rose-500/30 hover:border-rose-400/60 transition-all"
-              >
-                <Square className="h-4 w-4" />
-              </button>
+              {/* Action buttons */}
+              <div className="ml-4 flex items-center gap-2">
+                {monitor.status === 'running' ? (
+                  <button
+                    onClick={() => onPauseMonitor(monitor)}
+                    className="p-2 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-400 hover:bg-amber-500/30 hover:border-amber-400/60 transition-all"
+                  >
+                    <Pause className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onResumeMonitor(monitor)}
+                    className="p-2 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 hover:bg-emerald-500/30 hover:border-emerald-400/60 transition-all"
+                  >
+                    <PlayIcon className="h-4 w-4" />
+                  </button>
+                )}
+
+                <button
+                  onClick={() => onDeleteMonitor(monitor)}
+                  className="p-2 rounded-lg bg-rose-500/20 border border-rose-400/40 text-rose-400 hover:bg-rose-500/30 hover:border-rose-400/60 transition-all"
+                >
+                  <Trash className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           ))}
         </div>

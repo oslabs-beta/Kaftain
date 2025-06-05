@@ -8,6 +8,7 @@ import './models/ClusterConfig.js';
 import './models/LagRecord.js';
 import './models/ScalingRecord.js';
 import './models/MonitorRecord.js';
+import './models/ConsumerGroupRecord.js'
 
 // Load environment variables
 dotenv.config();
@@ -21,6 +22,11 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
+app.use((req, _res, next) => {
+  console.info(`[Request] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 app.use(cors());
 app.use(express.json());
 
@@ -30,6 +36,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api', routes);
+
 
 // Error Middleware
 app.use(notFound);

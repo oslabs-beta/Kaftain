@@ -1,13 +1,37 @@
 // Handles HTTP requests for scaling actions by invoking scaling service functions.
-import { scaleDeployment } from '../services/scalingService.js';
+import k8sManager from './k8sController.js';
+import ScalingEvent from '../models/ScalingRecord.js';
 
+// Manual scaling endpoint: expects { replicas, groupName, clusterId }
 export async function scale(req, res) {
   try {
-    const { lag } = req.body;
-    const result = await scaleDeployment(lag);
-    res.status(200).json(result);
+    const { replicas, groupName, clusterId } = req.body;
+
+    if (typeof replicas !== 'number' || replicas <= 0) {
+      return res.status(400).json({ message: 'replicas must be a positive number' });
+    }
+
+    const status = await k8sManager.watchDeploymentStatus();
+    const currentReplicas = status?.body?.spec?.replicas || 1;
+
+    if (replicas === currentReplicas) {
+      return res.status(200).json({ scaled: false, message: 'Already at desired replica count', currentReplicas });
+    }
+
+    await k8sManager.updateReplicaCount(replicas);
+
+    // Store scaling event in DB
+    await ScalingEvent.create({
+      group: groupName,
+      oldReplicas: currentReplicas,
+      newReplicas: replicas,
+      timestamp: new Date(),
+    });
+
+    res.status(200).json({ scaled: true, oldReplicas: currentReplicas, newReplicas: replicas });
   } catch (error) {
-    res.status(500).send('Error scaling deployment');
+    console.error('Error scaling deployment', error);
+    res.status(500).json({ message: 'Error scaling deployment', error: error.message });
   }
 }
 

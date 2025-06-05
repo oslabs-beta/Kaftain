@@ -1,5 +1,7 @@
 // Handles HTTP requests for lag metrics by invoking lag service functions.
 import { fetchLagData } from '../services/lagService.js';
+import LagRecord from '../models/LagRecord.js';
+import { Op } from 'sequelize';
 
 const url = 'http://52.52.97.230:9308/metrics'; //this is hardcoded but needs to updated
 const consumerGroupName = "test-consumer-static-value";
@@ -54,5 +56,28 @@ export async function getConsumerLag(req, res) {
 //     res.status(500).send('Error fetching consumer lag');
 //   }
 // }
+
+// Return LagRecord rows, optionally filtered by clusterId and time range
+export async function getLagRecords(req, res) {
+  try {
+    const { clusterId, range } = req.query; // range like '1h', '6h', '24h'
+    const where = {};
+    if (clusterId) where.clusterId = clusterId; // only if model has this column
+
+    if (range) {
+      const hours = parseInt(range.replace('h', ''), 10);
+      if (!isNaN(hours)) {
+        const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+        where.timestamp = { [Op.gte]: since };
+      }
+    }
+
+    const records = await LagRecord.findAll({ where, order: [['timestamp', 'ASC']] });
+    res.status(200).json(records);
+  } catch (err) {
+    console.error('Error fetching lag records', err);
+    res.status(500).json({ message: 'Error fetching lag records' });
+  }
+}
 
 export default getConsumerLag;

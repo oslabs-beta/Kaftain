@@ -4,7 +4,7 @@ import ScalingEvent from '../models/ScalingRecord.js';
 export function calculateOptimalReplicas(lag, config) {
   const min = config?.minReplicas || 1;
   const max = config?.maxReplicas || 10;
-  const factor = config?.scaleUpFactor || 1000;
+  const factor = config?.scalingFactor || 1000;
   const replicas = Math.min(max, Math.max(min, Math.ceil(lag / factor)));
   return replicas;
 }
@@ -14,7 +14,7 @@ function logScaling(msg, obj = {}) {
   console.info(`[ScalingService] ${msg}`, obj);
 }
 
-export async function scaleDeployment(lag, config, monitorRecordId) {
+export async function scaleDeployment(lag, config, monitorRecordId, groupName, topicName) {
   logScaling('Scale deployment requested', { lag, monitorRecordId });
   const replicas = calculateOptimalReplicas(lag, config);
 
@@ -32,8 +32,8 @@ export async function scaleDeployment(lag, config, monitorRecordId) {
     // Store scaling event in DB
     logScaling('Persisting ScalingEvent to DB');
     await ScalingEvent.create({
-      group: config.groupName,
-      topic: config.topicName || '',
+      group: groupName,
+      topic: topicName,
       oldReplicas: currentReplicas,
       newReplicas: replicas,
       lag,

@@ -6,6 +6,14 @@ const LagRecord = sequelize.define('LagRecord', {
   group: { type: DataTypes.STRING, allowNull: false },
   topic: { type: DataTypes.STRING, allowNull: false },
   lag: { type: DataTypes.INTEGER, allowNull: false },
+  clusterId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'ClusterConfigs',
+      key: 'id',
+    },
+  },
   timestamp: {
     type: DataTypes.DATE,
     allowNull: false,
