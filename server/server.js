@@ -49,7 +49,7 @@ app.use(errorHandler);
 (async () => {
   try {
     console.info('[Boot] Authenticating database connection...');
-    await sequelize.authenticate({ retry: { max: 10, backoffBase: 1000 }});
+    await sequelize.authenticate({ retry: { max: 30, backoffBase: 2000 }});
 
     console.info('[Boot] Database connection established');
 
