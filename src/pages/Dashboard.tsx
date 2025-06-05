@@ -262,6 +262,11 @@ export default function Dashboard() {
       }));
       setClusters(refreshed);
 
+      // Automatically select the newly added cluster (last in refreshed list)
+      if (refreshed.length) {
+        setSelectedClusterId(refreshed[refreshed.length - 1].id);
+      }
+
       // Close the modal
       setAddClusterModalOpen(false);
     } catch (err) {
@@ -280,6 +285,10 @@ export default function Dashboard() {
 
     try {
       await axios.delete(`/api/cluster-config/${clusterId}`);
+
+      // If the deleted cluster was currently selected, clear the selection so we don't hold a stale ID
+      setSelectedClusterId((prev) => (prev === clusterId ? null : prev));
+
       // Refresh clusters list
       await fetchInitialClusters(setClusters, setSelectedClusterId);
     } catch (err) {
@@ -290,7 +299,14 @@ export default function Dashboard() {
 
   // Open monitor modal and fetch consumer groups for the selected cluster
   const openMonitorModal = async () => {
-    if (!selectedClusterId) return;
+    if (!selectedClusterId) {
+      setErrorModal({
+        isOpen: true,
+        title: 'No Cluster Selected',
+        message: 'Please select a cluster before adding a monitor.',
+      });
+      return;
+    }
     try {
       const { data } = await axios.get('/api/consumer-groups', {
         params: { clusterId: parseInt(selectedClusterId, 10) },
