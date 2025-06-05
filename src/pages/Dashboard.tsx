@@ -238,7 +238,7 @@ export default function Dashboard() {
     const id = setInterval(() => {
       fetchMonitors();
       fetchLagRecords();
-    }, 500);
+    }, 1000);
     return () => clearInterval(id);
   }, [selectedClusterId, timeRange]);
 

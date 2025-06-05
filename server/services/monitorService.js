@@ -21,7 +21,7 @@ function buildKey(groupName, clusterId) {
 export async function startMonitor({
   groupName,
   topicName,
-  interval = 20000,
+  interval = 1000,
   config,
   clusterId,
 }) {
