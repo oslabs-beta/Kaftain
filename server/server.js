@@ -21,6 +21,13 @@ console.info('[Boot] Initializing Express app');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Log environment variables
+console.table({
+  DB_HOST: process.env.DB_HOST,
+  DB_USER: process.env.DB_USER,
+  DB_NAME: process.env.DB_NAME
+});
+
 // Middleware
 app.use((req, _res, next) => {
   console.info(`[Request] ${req.method} ${req.originalUrl}`);
@@ -49,7 +56,16 @@ app.use(errorHandler);
 (async () => {
   try {
     console.info('[Boot] Authenticating database connection...');
-    await sequelize.authenticate({ retry: { max: 30, backoffBase: 2000 }});
+    for (let i = 1; i <= 30; i++) {
+      try {
+        await sequelize.authenticate();
+        console.log(`[Boot] DB connected on try #${i}`);
+        break;
+      } catch (err) {
+        console.error(`[Boot] Try #${i} failed: ${err.code}`);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
 
     console.info('[Boot] Database connection established');
 
