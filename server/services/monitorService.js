@@ -25,24 +25,68 @@ export async function startMonitor({
   config,
   clusterId,
 }) {
-  // Clear any existing monitor interval before starting a new one
-  if (monitorInterval) clearInterval(monitorInterval);
+  // Build a unique key for this group/cluster combo
+  const key = buildKey(groupName, clusterId);
 
+  /*
+   * ---------------------------------------------------------------------
+   * 1. If an in-memory interval is already running for this key, stop it   
+   *    to prevent multiple intervals for the same consumer group.         
+   * ---------------------------------------------------------------------
+   */
+  if (groupToInterval[key]) {
+    await stopMonitor(groupToInterval[key]);
+    delete groupToInterval[key];
+  }
+
+  /*
+   * ---------------------------------------------------------------------
+   * 2. Either reactivate an existing "stopped" MonitorRecord *or* create  
+   *    a brand-new one.                                                   
+   * ---------------------------------------------------------------------
+   */
   // 1. Create a MonitorRecord in the database (transactional)
   let monitorRecord;
   const transaction = await sequelize.transaction();
   try {
-    monitorRecord = await MonitorRecord.create(
-      {
-        clusterId: clusterId,
+    // Try to find an existing *stopped* monitor for this group/cluster/topic
+    const existingStopped = await MonitorRecord.findOne({
+      where: {
+        clusterId,
         group: groupName,
-        topic: topicName,
-        status: 'active',
-        startedAt: new Date(),
-        configSnapshot: config,
+        ...(topicName ? { topic: topicName } : {}),
+        status: 'stopped',
       },
-      { transaction }
-    );
+      order: [['stoppedAt', 'DESC']],
+      transaction,
+    });
+
+    if (existingStopped) {
+      // Reactivate the existing record
+      await existingStopped.update(
+        {
+          status: 'active',
+          stoppedAt: null,
+          startedAt: new Date(),
+          configSnapshot: config,
+        },
+        { transaction }
+      );
+      monitorRecord = existingStopped;
+    } else {
+      // No suitable record found – create a new one
+      monitorRecord = await MonitorRecord.create(
+        {
+          clusterId,
+          group: groupName,
+          topic: topicName,
+          status: 'active',
+          startedAt: new Date(),
+          configSnapshot: config,
+        },
+        { transaction }
+      );
+    }
     await transaction.commit();
   } catch (err) {
     await transaction.rollback();
@@ -104,7 +148,7 @@ export async function startMonitor({
 
   // 5. Track the mappings for later reference
   monitorMap[intervalId] = monitorRecord.id;
-  groupToInterval[buildKey(groupName, clusterId)] = intervalId;
+  groupToInterval[key] = intervalId;
   monitorInterval = intervalId;
 }
 
