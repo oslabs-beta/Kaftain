@@ -53,7 +53,6 @@ export default function Dashboard() {
   const [monitorsByCluster, setMonitorsByCluster] = useState<Record<string, Monitor[]>>({});
   const [consumerGroups, setConsumerGroups] = useState<ConsumerGroupRow[]>([]);
   const [timelineSeries, setTimelineSeries] = useState<TimelineSeriesItem[]>([]);
-  const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; groupName: string }>({ isOpen: false, groupName: '' });
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; message: string }>({ isOpen: false, title: '', message: '' });
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [addClusterModalOpen, setAddClusterModalOpen] = useState(false);
@@ -62,6 +61,10 @@ export default function Dashboard() {
   const [monitorModalOpen, setMonitorModalOpen] = useState(false);
   const [deleteClusterDialog, setDeleteClusterDialog] = useState<{ isOpen: boolean; clusterId: string; clusterName: string }>({ isOpen: false, clusterId: '', clusterName: '' });
   const [modalConsumerGroups, setModalConsumerGroups] = useState<Array<{ name: string; topic: string }>>([]);
+  const [deleteMonitorDialog, setDeleteMonitorDialog] = useState<{ isOpen: boolean; monitor: Monitor | null }>({
+    isOpen: false,
+    monitor: null,
+  });
 
   const monitors = selectedClusterId ? (monitorsByCluster[selectedClusterId] || []) : [];
 
@@ -142,13 +145,29 @@ export default function Dashboard() {
     }
   };
 
-  // Delete monitor
-  const handleDeleteMonitor = async (monitor: Monitor) => {
+  // Request delete monitor (opens confirm dialog)
+  const handleRequestDeleteMonitor = (monitor: Monitor) => {
+    setDeleteMonitorDialog({ isOpen: true, monitor });
+  };
+
+  // Confirm deletion after user approval
+  const confirmDeleteMonitor = async () => {
+    const { monitor } = deleteMonitorDialog;
+    if (!monitor) return;
+
+    // Close dialog first to give instant feedback
+    setDeleteMonitorDialog({ isOpen: false, monitor: null });
+
     try {
       await axios.delete(`/api/service/monitors/${monitor.id}`);
       fetchMonitors();
     } catch (err) {
       console.error('Failed to delete monitor', err);
+      setErrorModal({
+        isOpen: true,
+        title: 'Failed to Delete Monitor',
+        message: 'There was an error deleting the monitor. Please try again.',
+      });
     }
   };
 
@@ -343,7 +362,7 @@ export default function Dashboard() {
               monitors={monitors}
               onPauseMonitor={handlePauseMonitor}
               onResumeMonitor={handleResumeMonitor}
-              onDeleteMonitor={handleDeleteMonitor}
+              onDeleteMonitor={handleRequestDeleteMonitor}
               onAddMonitor={openMonitorModal}
             />
           </div>
@@ -410,6 +429,16 @@ export default function Dashboard() {
             confirmText="Delete Cluster"
             onConfirm={confirmDeleteCluster}
             onCancel={() => setDeleteClusterDialog({ ...deleteClusterDialog, isOpen: false })}
+          />
+
+          {/* Delete Monitor Confirm Dialog */}
+          <ConfirmDialog
+            isOpen={deleteMonitorDialog.isOpen}
+            title="Delete Monitor"
+            message={`Are you sure you want to delete the monitor for ${deleteMonitorDialog.monitor?.groupName ?? ''}? This action cannot be undone.`}
+            confirmText="Delete Monitor"
+            onConfirm={confirmDeleteMonitor}
+            onCancel={() => setDeleteMonitorDialog({ isOpen: false, monitor: null })}
           />
         </div>
       </div>
