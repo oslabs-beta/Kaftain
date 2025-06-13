@@ -9,6 +9,10 @@ const ClusterConfig = sequelize.define('ClusterConfig', {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
   },
+  updatedAt: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW,
+  },
 });
 
 export default ClusterConfig;
