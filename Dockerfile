@@ -6,14 +6,14 @@ WORKDIR /app
 # Install app dependencies
 # Using package.json in repo root so backend gets all required libs (e.g. @kubernetes/client-node)
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
-# Copy only the server source (we are only running the backend)
-COPY server ./server
+# Copy full application source (frontend + backend)
+COPY . ./
 
 # Runtime configuration
 ENV NODE_ENV=production
-EXPOSE 3001
+EXPOSE 3001 5173
 
 # Default command – launches Express API
-CMD ["npm", "start"]
+CMD ["npm", "run", "dev-all"]

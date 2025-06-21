@@ -8,6 +8,7 @@ import './models/ClusterConfig.js';
 import './models/LagRecord.js';
 import './models/ScalingRecord.js';
 import './models/MonitorRecord.js';
+import './models/ConsumerGroupRecord.js'
 
 // Load environment variables
 dotenv.config();
@@ -20,7 +21,19 @@ console.info('[Boot] Initializing Express app');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Log environment variables
+console.table({
+  DB_HOST: process.env.DB_HOST,
+  DB_USER: process.env.DB_USER,
+  DB_NAME: process.env.DB_NAME
+});
+
 // Middleware
+app.use((req, _res, next) => {
+  console.info(`[Request] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 app.use(cors());
 app.use(express.json());
 
@@ -30,6 +43,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api', routes);
+
 
 // Error Middleware
 app.use(notFound);
@@ -42,7 +56,17 @@ app.use(errorHandler);
 (async () => {
   try {
     console.info('[Boot] Authenticating database connection...');
-    await sequelize.authenticate();
+    for (let i = 1; i <= 30; i++) {
+      try {
+        await sequelize.authenticate();
+        console.log(`[Boot] DB connected on try #${i}`);
+        break;
+      } catch (err) {
+        console.error(`[Boot] Try #${i} failed: ${err.code}`);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
     console.info('[Boot] Database connection established');
 
     console.info('[Boot] Syncing database models (alter=true)...');

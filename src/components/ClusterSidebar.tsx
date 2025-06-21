@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, Plus, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 
 export interface Cluster {
   id: string;
@@ -13,9 +13,11 @@ interface ClusterSidebarProps {
   onSelect: (id: string) => void;
   collapsed: boolean;
   setCollapsed: (value: boolean) => void;
+  onAddCluster: () => void;
+  onDeleteCluster: (id: string, name: string) => void;
 }
 
-export default function ClusterSidebar({ clusters, selectedClusterId, onSelect, collapsed, setCollapsed }: ClusterSidebarProps) {
+export default function ClusterSidebar({ clusters, selectedClusterId, onSelect, collapsed, setCollapsed, onAddCluster, onDeleteCluster }: ClusterSidebarProps) {
   return (
     <div
       className={`relative h-full bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl flex flex-col transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}
@@ -43,6 +45,7 @@ export default function ClusterSidebar({ clusters, selectedClusterId, onSelect, 
             collapsed={collapsed}
             isActive={selectedClusterId === c.id}
             onSelect={() => onSelect(c.id)}
+            onDelete={() => onDeleteCluster(c.id, c.name)}
           />
         ))}
       </nav>
@@ -50,7 +53,7 @@ export default function ClusterSidebar({ clusters, selectedClusterId, onSelect, 
       {/* Add Cluster */}
       <button
         className={`m-3 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/30 hover:bg-white/5 text-white/70 transition-all ${collapsed ? 'justify-center' : ''}`}
-        onClick={() => alert('Add Cluster: not implemented')}
+        onClick={onAddCluster}
       >
         <Plus className="h-4 w-4" />
         {!collapsed && <span>Add Cluster</span>}
@@ -59,7 +62,7 @@ export default function ClusterSidebar({ clusters, selectedClusterId, onSelect, 
   );
 }
 
-function SidebarItem({ cluster, collapsed, isActive, onSelect }: { cluster: Cluster; collapsed: boolean; isActive: boolean; onSelect: () => void }) {
+function SidebarItem({ cluster, collapsed, isActive, onSelect, onDelete }: { cluster: Cluster; collapsed: boolean; isActive: boolean; onSelect: () => void; onDelete: () => void }) {
   const statusIcon = () => {
     switch (cluster.status) {
       case 'healthy':
@@ -73,11 +76,25 @@ function SidebarItem({ cluster, collapsed, isActive, onSelect }: { cluster: Clus
 
   return (
     <div
-      onClick={onSelect}
-      className={`cursor-pointer select-none mx-2 my-1 flex items-center gap-2 rounded-lg px-2 py-2 transition-colors ${isActive ? 'bg-indigo-600/60' : 'hover:bg-white/5'}`}
+      className={`mx-2 my-1 flex items-center gap-2 rounded-lg px-2 py-2 transition-colors ${isActive ? 'bg-indigo-600/60' : 'hover:bg-white/5'}`}
     >
-      {statusIcon()}
-      {!collapsed && <span className="text-white/80 truncate">{cluster.name}</span>}
+      {/* Main clickable area (select cluster) */}
+      <div onClick={onSelect} className="flex-1 flex items-center gap-2 cursor-pointer select-none">
+        {statusIcon()}
+        {!collapsed && <span className="text-white/80 truncate">{cluster.name}</span>}
+      </div>
+      {/* Delete button */}
+      {!collapsed && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="p-1 rounded hover:bg-white/10 text-rose-400"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }
