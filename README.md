@@ -18,16 +18,66 @@ Kaftain consists of three main components:
 
 1. **Frontend**: React + TypeScript dashboard for visualization and configuration
 2. **Backend**: Node.js + Express API server that orchestrates monitoring and scaling
-3. **Data Layer**: MongoDB for storing configuration, lag history, and scaling events
+3. **Data Layer**: PostgreSQL for storing configuration, lag history, and scaling events
 
 The system integrates with:
 - **Kafka Exporter**: Prometheus-compatible metrics endpoint for Kafka consumer lag
 - **Kubernetes API**: For scaling deployments based on lag
 
+```mermaid
+graph TB
+    subgraph "Kaftain Architecture"
+        subgraph "Frontend (React + TypeScript) "
+            UI[Dashboard UI]
+            Charts[Lag Timeline Charts]
+            Config[Cluster/Monitor Config]
+        end
+        
+        subgraph "Backend (Node.js + Express)"
+            API[REST API]
+            Monitor[Monitor Service]
+            Lag[Lag Service]
+            Scale[Scaling Service]
+            K8s[K8s Controller]
+        end
+        
+        subgraph "Data Storage"
+            Postgresql[(Postgresql)]
+        end
+        
+        subgraph "External Systems"
+            Kafka[Kafka Clusters]
+            KafkaExp[Kafka Exporter]
+            K8sAPI[Kubernetes API]
+            Deploy[Consumer Deployments]
+        end
+    end
+    
+    UI --> API
+    Charts --> API
+    Config --> API
+    
+    API --> Monitor
+    API --> Lag
+    Monitor --> Lag
+    Monitor --> Scale
+    Scale --> K8s
+    
+    Lag --> KafkaExp
+    KafkaExp --> Kafka
+    K8s --> K8sAPI
+    K8sAPI --> Deploy
+    
+    Monitor --> Postgresql
+    Lag --> Postgresql
+    Scale --> Postgresql
+    API --> Postgresql
+```
+
 ## 📋 Prerequisites
 
 - Node.js 18+
-- MongoDB 5.0+
+- PostgreSQL 15+
 - Kubernetes cluster with:
   - Kafka consumer deployments
   - [Kafka Exporter](https://github.com/danielqsj/kafka_exporter) deployed
@@ -54,16 +104,16 @@ cd server && npm install && cd ..
 ```bash
 # Create .env file in server directory
 cat > server/.env << EOF
-MONGODB_URI=mongodb://localhost:27017/kaftain
+DATABASE_URL=postgresql://localhost:5432/kaftain
 PORT=3001
 NAMESPACE=default
 DEPLOYMENT_NAME=kafka-consumer
 EOF
 ```
 
-4. Start MongoDB locally:
+4. Start PostgreSQL locally:
 ```bash
-docker run -d -p 27017:27017 --name kaftain-mongo mongo:5
+docker run -d -p 5432:5432 --name kaftain-postgres postgres:15
 ```
 
 5. Run the application:
@@ -88,7 +138,7 @@ kind: ConfigMap
 metadata:
   name: kaftain-config
 data:
-  MONGODB_URI: "mongodb://mongodb:27017/kaftain"
+  DATABASE_URL: "postgresql://postgres:5432/kaftain"
   NAMESPACE: "default"
   DEPLOYMENT_NAME: "kafka-consumer"
 ---
@@ -255,19 +305,19 @@ Each monitor can be configured with:
 ### Common Issues
 
 1. **"Failed to fetch consumer groups"**
-   - Verify Kafka Exporter is running and accessible
-   - Check the cluster URL is correct
-   - Ensure network policies allow communication
+  - Verify Kafka Exporter is running and accessible
+  - Check the cluster URL is correct
+  - Ensure network policies allow communication
 
 2. **"Failed to scale deployment"**
-   - Check RBAC permissions for the service account
-   - Verify deployment exists in the configured namespace
-   - Check Kubernetes API server logs
+  - Check RBAC permissions for the service account
+  - Verify deployment exists in the configured namespace
+  - Check Kubernetes API server logs
 
 3. **"No lag data available"**
-   - Ensure consumer groups are actively consuming
-   - Verify Kafka Exporter is scraping the correct Kafka cluster
-   - Check if consumer group names match exactly
+  - Ensure consumer groups are actively consuming
+  - Verify Kafka Exporter is scraping the correct Kafka cluster
+  - Check if consumer group names match exactly
 
 ## 🤝 Contributing
 
@@ -281,4 +331,4 @@ Each monitor can be configured with:
 
 - [Kafka Exporter](https://github.com/danielqsj/kafka_exporter) for metrics
 - [Recharts](https://recharts.org/) for beautiful charts
-- [Kubernetes Client](https://github.com/kubernetes-client/javascript) for K8s integration 
+- [Kubernetes Client](https://github.com/kubernetes-client/javascript) for K8s integration
