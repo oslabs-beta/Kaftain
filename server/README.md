@@ -28,5 +28,5 @@ Backend server for the Kaftain application.
 ## Environment Variables
 
 - `PORT` - Server port (default: 5000)
-- `MONGODB_URI` - MongoDB connection string
+- `DATABASE_URL` - PostgreSQL connection string
 - `NODE_ENV` - Environment (development/production) 
